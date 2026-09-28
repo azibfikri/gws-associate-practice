@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: gws-associate-practice
+    runtime: static
+    plan: free
+    branch: main
+    buildCommand: echo static
+    staticPublishPath: .
+    autoDeployTrigger: commit
