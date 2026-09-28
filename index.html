@@ -98,10 +98,58 @@
   .badge.set2 { background: #f3e8ff; color: #6b21a8; }
   h2 { font-size: 1.12rem; line-height: 1.45; margin: 0 0 12px; font-weight: 650; }
   ol { margin: 0; padding: 0; list-style: none; }
-  li { display: flex; gap: 10px; padding: 7px 0; border-top: 1px solid #f0ebe3; }
-  li strong {
+  li { padding: 4px 0; border-top: 1px solid #f0ebe3; }
+  button.choice {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    width: 100%;
+    margin: 0;
+    padding: 10px;
+    min-height: 44px;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  button.choice strong {
     font: 600 15px/1.4 ui-sans-serif, system-ui, sans-serif;
     min-width: 1.2em;
+    flex: 0 0 auto;
+  }
+  button.choice .choice-text { flex: 1 1 auto; }
+  button.choice:hover { background: #f7f3ec; }
+  button.choice:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  button.choice[aria-pressed="true"] {
+    background: #f7f3ec;
+    border-color: #cfc6b8;
+    color: inherit;
+  }
+  button.choice.is-correct,
+  button.choice.is-correct[aria-pressed="true"] {
+    background: var(--ok-soft);
+    border-color: #b7dfc4;
+    color: var(--ok);
+  }
+  button.choice.is-wrong,
+  button.choice.is-wrong[aria-pressed="true"] {
+    background: #fdecea;
+    border-color: #f3c1bc;
+    color: #8c1d18;
+  }
+  .mark {
+    margin-left: auto;
+    flex: 0 0 auto;
+    font: 600 12px/1.4 ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding-top: 2px;
   }
   details { margin-top: 10px; }
   summary {
@@ -139,7 +187,7 @@
 <header>
   <div class="wrap" style="padding-bottom:0">
     <h1>Google Workspace Associate practice questions</h1>
-    <p>102 questions read from the slides in two Shapingpixel exam-prep videos. Questions 1–72 are the first set. Questions 73–102 are the extra items from the 102-question video. Answers stay closed until you open them.</p>
+    <p>102 questions read from the slides in two Shapingpixel exam-prep videos. Questions 1–72 are the first set. Questions 73–102 are the extra items from the 102-question video. Click a choice to check it. Show all answers reveals every correct choice without selecting one.</p>
   </div>
 </header>
 <div class="wrap">
@@ -164,9 +212,42 @@ const showall = document.getElementById("showall");
 const count = document.getElementById("count");
 let setFilter = "all";
 
+function correctLetters(answer) {
+  return new Set(answer.match(/[A-E]/g) || []);
+}
+
+function grade(art) {
+  const revealAll = showall.getAttribute("aria-pressed") === "true";
+  const selected = art.dataset.pick || "";
+  const correct = correctLetters(art.dataset.answer || "");
+  const graded = Boolean(selected) || revealAll;
+  art.querySelectorAll(".choice").forEach(btn => {
+    const letter = btn.dataset.letter;
+    const picked = letter === selected;
+    const isCorrect = correct.has(letter);
+    const showCorrect = isCorrect && graded;
+    const showWrong = picked && !isCorrect;
+    btn.classList.toggle("is-correct", showCorrect);
+    btn.classList.toggle("is-wrong", showWrong);
+    btn.setAttribute("aria-pressed", picked ? "true" : "false");
+    const mark = btn.querySelector(".mark");
+    if (showWrong) {
+      mark.hidden = false;
+      mark.textContent = "Wrong";
+    } else if (showCorrect) {
+      mark.hidden = false;
+      mark.textContent = "Correct";
+    } else {
+      mark.hidden = true;
+      mark.textContent = "";
+    }
+  });
+}
+
 function card(item) {
   const art = document.createElement("article");
   art.dataset.set = String(item.set);
+  art.dataset.answer = item.answer;
   art.id = "q-" + item.n;
   const blob = [item.q, item.answer, item.explanation, item.note, ...item.options.map(o => o.letter + " " + o.text)].join(" ").toLowerCase();
   art.dataset.blob = blob;
@@ -178,11 +259,25 @@ function card(item) {
   const ol = document.createElement("ol");
   item.options.forEach(o => {
     const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "choice";
+    btn.dataset.letter = o.letter;
+    btn.setAttribute("aria-pressed", "false");
     const b = document.createElement("strong");
     b.textContent = o.letter;
     const span = document.createElement("span");
+    span.className = "choice-text";
     span.textContent = o.text;
-    li.append(b, span);
+    const mark = document.createElement("span");
+    mark.className = "mark";
+    mark.hidden = true;
+    btn.append(b, span, mark);
+    btn.addEventListener("click", () => {
+      art.dataset.pick = o.letter;
+      grade(art);
+    });
+    li.append(btn);
     ol.append(li);
   });
   art.append(meta, h, ol);
@@ -236,6 +331,7 @@ showall.addEventListener("click", () => {
   showall.setAttribute("aria-pressed", open ? "true" : "false");
   showall.textContent = open ? "Hide all answers" : "Show all answers";
   document.querySelectorAll("#list details").forEach(d => { d.open = open; });
+  document.querySelectorAll("#list article").forEach(grade);
 });
 apply();
 </script>
